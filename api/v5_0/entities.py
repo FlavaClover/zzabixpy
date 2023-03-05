@@ -1,6 +1,6 @@
 from enum import Enum
 from dataclasses import dataclass, field
-from typing import Union, List, Optional
+from typing import Union, List, Optional, Dict, Any
 
 from api._base import ZabbixEntity
 
@@ -10,9 +10,8 @@ OneOrManyStr = Union[str, List[str]]
 
 @dataclass
 class _BaseSearch:
-    filters: dict = field(default=None)
-    search: dict = field(default=None)
-
+    filter: Dict[Enum, Any] = field(default=None)
+    search: Dict[Enum, Any] = field(default=None)
 
 # Media
 
@@ -243,9 +242,9 @@ class UserGet(_BaseSearch, ZabbixEntity):
 
 @dataclass
 class UserCreate(ZabbixEntity):
-    alias: str
-    passwd: str
-    usrgrps: Union[List[UserGroup], List[str]]
+    alias: str = field(default_factory=str)
+    passwd: str = field(default_factory=str)
+    usrgrps: Union[List[UserGroup], List[str], List[Dict]] = field(default=None)
     url: str = field(default='')
     user_medias: Optional[List[Media]] = field(default_factory=list)
     autologin: AutoLogin = field(default=AutoLogin.disabled)
@@ -257,3 +256,30 @@ class UserCreate(ZabbixEntity):
     surname: str = field(default='')
     theme: Theme = field(default=Theme.default)
     type: UserType = field(default=UserType.user)
+
+    def __post_init__(self):
+        if self.usrgrps:
+            self.usrgrps = [
+                {'usrgrpid': g.usrgrpid} if isinstance(g, UserGroup) else
+                {'usrgrpid': g} if isinstance(g, str) else g
+                for g in self.usrgrps
+            ]
+
+
+@dataclass
+class UserUpdate(UserCreate):
+    userid: str = field(default_factory=str)
+    passwd: str = field(default=None)
+    usrgrps: Union[List[UserGroup], List[str]] = field(default=None)
+    alias: str = field(default=None)
+    url: str = field(default=None)
+    user_medias: Optional[List[Media]] = field(default_factory=list)
+    autologin: AutoLogin = field(default=AutoLogin.disabled)
+    autologout: str = field(default=None)
+    lang: str = field(default=None)
+    name: str = field(default=None)
+    refresh: str = field(default=None)
+    rows_per_page: str = field(default=None)
+    surname: str = field(default=None)
+    theme: Theme = field(default=None)
+    type: UserType = field(default=None)

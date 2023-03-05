@@ -6,28 +6,10 @@ from aiohttp import ClientSession
 
 from api import entities5
 from api.exceptions import ZabbixExceptionFactory, ZabbixException
-from api._base import ZabbixEntity
+from api._base import ZabbixEntity, _ZbxRequest, _ZbxMethod
 
 
 UserType = Optional[Union[entities5.User, List[entities5.User]]]
-
-
-class _ZbxMethod(Enum):
-    version = 'appinfo.version'
-    login = 'user.login'
-    logout = 'user.logout'
-    get_user = 'user.get'
-    create_user = 'user.create'
-    delete_user = 'user.delete'
-
-
-@dataclass
-class _ZbxRequest(ZabbixEntity):
-    method: _ZbxMethod
-    params: object = None
-    jsonrpc: str = '2.0'
-    id: str = '1'
-    auth: str = None
 
 
 class Zabbix5:
@@ -49,15 +31,15 @@ class Zabbix5:
 
         return entities5.User(**response[0])
 
-    async def create_user(
-            self, params: entities5.UserCreate
-    ) -> entities5.User:
-        params.usrgrps = [
-            {'usrgrpid': g.usrgrpid} if isinstance(g, entities5.UserGroup) else {'usrgrpid': g}
-            for g in params.usrgrps
-        ]
-
+    async def create_user(self, params: entities5.UserCreate) -> entities5.User:
         response = await self._do_request(_ZbxMethod.create_user, params=params)
+
+        return await self.get_users(entities5.UserGet(
+            userids=response['userids'][0]
+        ))
+
+    async def update_user(self, params: entities5.UserUpdate) -> entities5.User:
+        response = await self._do_request(_ZbxMethod.update_user, params)
 
         return await self.get_users(entities5.UserGet(
             userids=response['userids'][0]
@@ -100,8 +82,9 @@ class Zabbix5:
             params=params, method=method, auth=self._auth,
         )
 
+        data = data.dump()
         response = await self._session.post(
-            '/api_jsonrpc.php', data=data.dump()
+            '/api_jsonrpc.php', data=data
         )
 
         response_json = await response.json()
