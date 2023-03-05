@@ -1,7 +1,6 @@
-import attr
 from enum import Enum
 from dataclasses import dataclass, field
-from typing import Union, List
+from typing import Union, List, Optional
 
 from api._base import ZabbixEntity
 
@@ -183,6 +182,25 @@ class UserType(Enum):
     super = '3'
 
 
+class UserFields(Enum):
+    extend = 'extend'
+    userid = 'userid'
+    alias = 'alias'
+    attempt_clock = 'attempt_clock'
+    attempt_failed = 'attempt_failed'
+    attempt_ip = 'attempt_ip'
+    autologin = 'autologin'
+    autologout = 'autologout'
+    lang = 'lang'
+    name = 'name'
+    refresh = 'refresh'
+    rows_per_page = 'rows_per_page'
+    surname = 'surname'
+    theme = 'theme'
+    type = 'type'
+    url = 'url'
+
+
 @dataclass
 class User(ZabbixEntity):
     userid: str
@@ -213,6 +231,7 @@ class UserLogin(ZabbixEntity):
 
 @dataclass
 class UserGet(_BaseSearch, ZabbixEntity):
+    output: Union[UserFields, List[UserFields]] = field(default=UserFields.extend)
     mediaids: OneOrManyStr = field(default=None)
     mediatypeids: OneOrManyStr = field(default=None)
     userids: OneOrManyStr = field(default=None)
@@ -220,3 +239,21 @@ class UserGet(_BaseSearch, ZabbixEntity):
     selectMedias: Union[MediaFields, List[MediaFields]] = field(default=None)
     selectMediatypes: Union[MediaTypeFields, List[MediaTypeFields]] = field(default=None)
     selectUsrgrps: Union[UserGroupFields, List[UserGroupFields]] = field(default=None)
+
+
+@dataclass
+class UserCreate(ZabbixEntity):
+    alias: str
+    passwd: str
+    usrgrps: Union[List[UserGroup], List[str]]
+    url: str = field(default='')
+    user_medias: Optional[List[Media]] = field(default_factory=list)
+    autologin: AutoLogin = field(default=AutoLogin.disabled)
+    autologout: str = field(default='15m')
+    lang: str = field(default='en_GB')
+    name: str = field(default='')
+    refresh: str = field(default='30s')
+    rows_per_page: str = field(default='50')
+    surname: str = field(default='')
+    theme: Theme = field(default=Theme.default)
+    type: UserType = field(default=UserType.user)

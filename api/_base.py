@@ -1,7 +1,7 @@
 import json
 from enum import Enum
 from typing import Tuple
-from dataclasses import dataclass, field, fields, Field, asdict
+from dataclasses import dataclass, fields, Field, asdict
 
 
 @dataclass

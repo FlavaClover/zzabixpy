@@ -1,3 +1,4 @@
+import secrets
 import pytest
 
 from api import entities5
@@ -22,3 +23,31 @@ async def test_get_user(zabbix5, admin_id):
         assert len(user_admin.medias) != 0
         assert len(user_admin.usrgrps) != 0
 
+        non_existing_user = await zapi.get_users(
+            entities5.UserGet(
+                userids='kek',
+            )
+        )
+
+        assert non_existing_user is None
+
+
+@pytest.mark.asyncio
+async def test_create_user(zabbix5, group_id):
+    async with zabbix5 as zapi:
+        alias = 'from_pytest_' + secrets.token_hex(3)
+
+        user_count_before = len(await zapi.get_users())
+
+        user = await zapi.create_user(
+            entities5.UserCreate(
+                passwd=secrets.token_hex(16),
+                alias=alias,
+                usrgrps=[group_id]
+            )
+        )
+
+        user_count_after = len(await zapi.get_users())
+
+        assert user_count_before != user_count_after
+        await zapi.delete_user(user.userid)

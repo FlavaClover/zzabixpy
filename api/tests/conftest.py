@@ -11,3 +11,8 @@ def zabbix5():
 @pytest.fixture(scope='session')
 def admin_id():
     return '1'
+
+
+@pytest.fixture(scope='session')
+def group_id():
+    return '7'
