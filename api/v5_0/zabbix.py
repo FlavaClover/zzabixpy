@@ -5,6 +5,7 @@ from typing import Optional, Union, List
 from aiohttp import ClientSession
 
 from api import entities5
+from api.exceptions import ZabbixExceptionFactory, ZabbixException
 from api._base import ZabbixEntity
 
 
@@ -17,6 +18,7 @@ class _ZbxMethod(Enum):
     logout = 'user.logout'
     get_user = 'user.get'
     create_user = 'user.create'
+    delete_user = 'user.delete'
 
 
 @dataclass
@@ -38,6 +40,7 @@ class Zabbix5:
 
     async def get_users(self, params: entities5.UserGet = entities5.UserGet()) -> UserType:
         response = await self._do_request(_ZbxMethod.get_user, params)
+
         if not isinstance(params.userids, str):
             return [entities5.User(**u) for u in response]
 
@@ -49,7 +52,6 @@ class Zabbix5:
     async def create_user(
             self, params: entities5.UserCreate
     ) -> entities5.User:
-
         params.usrgrps = [
             {'usrgrpid': g.usrgrpid} if isinstance(g, entities5.UserGroup) else {'usrgrpid': g}
             for g in params.usrgrps
@@ -61,8 +63,10 @@ class Zabbix5:
             userids=response['userids'][0]
         ))
 
-    async def delete_user(self, user_id: str):
-        pass
+    async def delete_user(self, user_ids: Union[str, List[str]]):
+        await self._do_request(
+            _ZbxMethod.delete_user, params=user_ids if isinstance(user_ids, list) else [user_ids]
+        )
 
     async def connect(self):
         self._session = ClientSession(
@@ -86,7 +90,9 @@ class Zabbix5:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.disconnect()
 
-    async def _do_request(self, method: _ZbxMethod, params: Optional[ZabbixEntity] = None):
+    async def _do_request(
+            self, method: _ZbxMethod, params: Optional[Union[ZabbixEntity, list, dict]] = None
+    ):
         if not params:
             params = {}
 
@@ -100,7 +106,13 @@ class Zabbix5:
 
         response_json = await response.json()
         if 'error' in response_json:
-            raise Exception(str(response_json['error']))
+            exception_factory = ZabbixExceptionFactory(response_json['error']['code'])
+            exception = exception_factory.exception()
+            if exception is None:
+                raise ZabbixException(**response_json['error'])
+            raise exception(data=response_json['error']['data'])
+
         if 'result' in response_json:
             return response_json['result']
+
         return response_json
